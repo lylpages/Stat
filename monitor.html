@@ -1,0 +1,114 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+      <html>
+       <head>
+        <meta charset="utf-8">
+        <meta http-equiv="pragma" content="no-cache">
+        <meta http-equiv="cache-control" content="no-cache">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title>性能监控</title>
+        <script src="http://libs.baidu.com/jquery/1.6.4/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/4.2.1/echarts.min.js"></script>
+        </head>
+        <body>
+                                <div style="padding:10px;">选择时间
+                                <select id="sel" style="width:100px" onchange="upd(gdata)">
+                                        <option value='1' selected>分钟</option>
+                                        <option value='0'>小时</option>
+                                        <option value='3'>日期</option>
+                                </select>
+                                最后更新时间
+                                <input id='rq' style="width:150px"></input>
+                                <input type="checkbox" id="auto" checked>自动刷新</input>
+                                </div>
+                <div id="main" style="height:500px;border:1px solid #ccc;padding:10px;"></div>
+        <script type="text/javascript">
+    //--- 折柱 ---
+    var myChart = echarts.init(document.getElementById('main'),'infographic');
+    //--- 定时器 ---
+    var interval=null;
+
+    myChart.setOption({
+        title: {
+            text: '服务器系统监控'
+        },
+        tooltip: {},
+        legend: {
+            data:['count']
+        },
+        xAxis: {
+            data: []
+        },
+        yAxis: {},
+        series: [{
+            name: 'count',
+			type: 'line',
+            data: []
+        }]
+    });
+
+    var down=function(){
+		//json路径
+        $.get('jsonfile').done(upd);
+    }
+
+    var gdata = null;
+
+        //新callback
+        var upd = function(data1){
+                //alert(data1);
+        myChart.hideLoading();
+                gdata= data1;
+                var data = JSON.parse(data1);
+                var fdate = new Date(data.last*1000);
+                var s = $('#sel').val();
+                s = parseInt(s,10);
+                $('#rq').val(fdate.getFullYear()+"-"+(fdate.getMonth()+1)+"-"+data.pos[3]+' '+data.pos[0]+':'+data.pos[1]+":"+data.pos[2]);
+                var mm = data.pos[s];
+                var start = parseInt(mm,10);
+
+                var axis = new Array();
+                var showdt = new Array();
+
+                var dd = new Array();
+                dd[0] = data.hh;
+                dd[1] = data.mm;
+                dd[2] = data.ss;
+                dd[3] = data.days;
+
+                var sorted = Object.keys(dd[s]).sort(function(a,b){
+                        return parseInt(a,10)-parseInt(b,10);
+                });
+
+                for(var p in sorted){
+                        if(p<10) p='0'+p;
+                        axis.push(''+p);
+                        showdt.push(dd[s][''+p]);
+                }
+
+                axis = axis.slice(start+2).concat(axis.slice(0,start+1));
+                showdt = showdt.slice(start+2).concat(showdt.slice(0,start+1));
+				
+                myChart.setOption({
+                   xAxis: {
+                        data: axis
+                   },
+                   series: [{
+                        name: 'count', // 根据名字对应到相应的系列
+                        data: showdt
+                   }]
+                });
+                if(interval==null){
+                        interval = window.setInterval(down, 60*1000);
+                }
+        }
+
+$(function(){
+    myChart.showLoading(); // 首次显示加载动画
+    // 异步加载数据
+    $.ajaxSetup({cache:false});
+	// json文件路径
+    $.get('jsonpath').done(upd);
+});
+
+     </script>
+</body>
